@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { auth } from "@/auth/user-auth";
 import { db } from "@/db";
-import { orderActionLogs, orders } from "@/db/schema";
-import { createId } from "@/lib/ids";
+import { orders } from "@/db/schema";
+import { appendOrderLog } from "@/server/admin/orders";
 
 export async function POST(
   _req: Request,
@@ -33,10 +33,14 @@ export async function POST(
     }
 
     if (order.paymentStatus === "paid") {
-      return NextResponse.json({ success: true, orderNumber, alreadyPaid: true });
+      return NextResponse.json({
+        success: true,
+        orderNumber,
+        alreadyPaid: true,
+      });
     }
 
-    if (order.status === "cancelled") {
+    if (order.status === "cancelled" || order.status === "terminated") {
       return NextResponse.json({ error: "订单已取消" }, { status: 400 });
     }
 
@@ -44,7 +48,7 @@ export async function POST(
     await db
       .update(orders)
       .set({
-        status: "paid",
+        status: "pending_processing",
         paymentStatus: "paid",
         paymentMethod: "alipay",
         paidAt: now,
@@ -52,10 +56,9 @@ export async function POST(
       })
       .where(eq(orders.id, order.id));
 
-    await db.insert(orderActionLogs).values({
-      id: createId("log"),
+    await appendOrderLog({
       orderId: order.id,
-      action: "paid",
+      actionType: "paid",
       detail: "假支付宝支付成功",
       actorType: "user",
       actorId: session.user.id,

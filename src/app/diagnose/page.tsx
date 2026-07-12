@@ -59,22 +59,10 @@ export default function InquiryPage() {
       company: formData.get("company") as string,
       email: formData.get("email") as string,
       phone: formData.get("phone") as string,
-      message: [
-        formData.get("industry")
-          ? `所属行业：${formData.get("industry") as string}`
-          : null,
-        formData.get("market")
-          ? `目标市场：${formData.get("market") as string}`
-          : null,
-        formData.get("priority")
-          ? `当前优先问题：${formData.get("priority") as string}`
-          : null,
-        formData.get("message")
-          ? `补充说明：${formData.get("message") as string}`
-          : null,
-      ]
-        .filter(Boolean)
-        .join("\n"),
+      industry: (formData.get("industry") as string) || "",
+      market: (formData.get("market") as string) || "",
+      priority: (formData.get("priority") as string) || "",
+      message: (formData.get("message") as string) || "",
     };
 
     try {

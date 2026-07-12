@@ -1,6 +1,8 @@
 import { AntdRegistry } from "@ant-design/nextjs-registry";
 import { ConfigProvider } from "antd";
-import { AdminShell } from "@/components/admin/admin-shell";
+import "./admin.css";
+
+export const dynamic = "force-dynamic";
 
 export default function AdminLayout({
   children,
@@ -12,21 +14,13 @@ export default function AdminLayout({
       <ConfigProvider
         theme={{
           token: {
-            colorPrimary: "#1677ff",
+            colorPrimary: "#e67e22",
             borderRadius: 8,
           },
         }}
       >
-        {children}
+        <div className="admin-scope">{children}</div>
       </ConfigProvider>
     </AntdRegistry>
   );
-}
-
-export function AdminProtectedShell({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return <AdminShell>{children}</AdminShell>;
 }

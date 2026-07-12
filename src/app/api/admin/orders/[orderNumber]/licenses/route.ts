@@ -1,0 +1,121 @@
+import { NextResponse } from "next/server";
+import { eq } from "drizzle-orm";
+import { z } from "zod";
+import { adminAuth } from "@/auth/admin-auth";
+import { db } from "@/db";
+import { orderShipments, orders } from "@/db/schema";
+import { createId } from "@/lib/ids";
+import {
+  assertExpiryAtLeastTomorrow,
+  computeExpiryDate,
+  dateInputToIso,
+  isLicensePeriod,
+  parseMonthlyLeadsLimitInput,
+} from "@/lib/license/duration";
+import {
+  signLicensePayload,
+  verifyLicenseCodeWithConfig,
+} from "@/lib/license/crypto";
+import { appendOrderLog, getAdminOrderByNumber } from "@/server/admin/orders";
+
+const schema = z.object({
+  modules: z.array(z.string()).min(1),
+  period: z.string(),
+  monthlyLeadsLimit: z.union([z.number(), z.null(), z.string()]).optional(),
+  expiresAt: z.string().optional(),
+});
+
+export async function POST(
+  req: Request,
+  context: { params: Promise<{ orderNumber: string }> }
+) {
+  const session = await adminAuth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "未登录" }, { status: 401 });
+  }
+
+  const { orderNumber } = await context.params;
+  const detail = await getAdminOrderByNumber(orderNumber);
+  if (!detail) {
+    return NextResponse.json({ error: "订单不存在" }, { status: 404 });
+  }
+
+  try {
+    const body = await req.json();
+    const parsed = schema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: "参数无效" }, { status: 400 });
+    }
+    if (!isLicensePeriod(parsed.data.period)) {
+      return NextResponse.json({ error: "无效授权时长" }, { status: 400 });
+    }
+
+    const period = parsed.data.period;
+    const dateOnly = computeExpiryDate(period, parsed.data.expiresAt);
+    assertExpiryAtLeastTomorrow(dateOnly);
+    const expiresAtIso = dateInputToIso(dateOnly);
+    const monthlyLeadsLimit = parseMonthlyLeadsLimitInput(
+      parsed.data.monthlyLeadsLimit
+    );
+
+    const customerName =
+      detail.order.companyName.trim() || detail.order.contactName.trim();
+
+    const code = signLicensePayload(
+      customerName,
+      parsed.data.modules,
+      period,
+      expiresAtIso,
+      monthlyLeadsLimit
+    );
+    verifyLicenseCodeWithConfig(code);
+
+    const now = new Date();
+    const shipmentId = createId("shp");
+    await db.insert(orderShipments).values({
+      id: shipmentId,
+      orderId: detail.order.id,
+      trackingNumber: code,
+      shippedAt: now,
+      note: `modules=${parsed.data.modules.join(",")}; period=${period}`,
+      adminId: session.user.id,
+      createdAt: now,
+    });
+
+    await db
+      .update(orders)
+      .set({
+        shippingStatus: "shipped",
+        status:
+          detail.order.status === "pending_processing" ||
+          detail.order.status === "partially_shipped"
+            ? "shipped"
+            : detail.order.status,
+        updatedAt: now,
+      })
+      .where(eq(orders.id, detail.order.id));
+
+    await appendOrderLog({
+      orderId: detail.order.id,
+      actionType: "shipment_added",
+      detail: "生成授权码并回填",
+      actorType: "admin",
+      actorId: session.user.id,
+    });
+
+    return NextResponse.json({
+      success: true,
+      code,
+      shipmentId,
+      expiresAt: expiresAtIso,
+    });
+  } catch (error) {
+    console.error("Generate license error:", error);
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : "生成授权码失败",
+      },
+      { status: 500 }
+    );
+  }
+}

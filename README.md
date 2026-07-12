@@ -28,10 +28,18 @@ pnpm db:seed
 - 密码：`Admin123456`
 - 入口：`/admin/login`
 
+## 授权码环境变量
+
+后台「生成授权码」依赖 Ed25519 密钥，写入 `.env.local`：
+
+- `LICENCE_SALT`
+- `LICENCE_PRIVATE_KEY`（PEM，换行可用 `\n`）
+- `LICENCE_PUBLIC_KEY`
+
 ## 主要路由
 
 - `/` 首页 · `/plans` 购买 · `/diagnose` 预约增长诊断
 - `/login` `/register` 前台账号
 - `/checkout` `/pay/[orderNumber]` 下单与假支付宝
-- `/account` `/account/orders` 用户中心
-- `/admin` 管理后台
+- `/account` `/account/orders` 用户中心（开通进度 / 授权码）
+- `/admin` 管理后台（订单 / 询盘 / 客户）

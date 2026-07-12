@@ -1,9 +1,16 @@
 import Link from "next/link";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth/user-auth";
+import { LicenseDeliveryCard } from "@/components/account/license-delivery-card";
+import { OrderFulfillmentProgress } from "@/components/account/order-fulfillment-progress";
 import { db } from "@/db";
-import { orders } from "@/db/schema";
+import { orderItems, orders, orderShipments } from "@/db/schema";
+import {
+  getCustomerOrderBadge,
+  getCustomerOrderDetailCopy,
+} from "@/lib/admin-display";
+import { tryDecodeLicensePayload } from "@/lib/license/crypto";
 import {
   MODULE_LABELS,
   PERIOD_LABELS,
@@ -12,12 +19,7 @@ import {
   isPaidModule,
   type PaidModule,
 } from "@/lib/pricing";
-
-const statusLabel: Record<string, string> = {
-  unpaid: "待支付",
-  paid: "已支付",
-  cancelled: "已取消",
-};
+import { featuresFromItem } from "@/server/admin/orders";
 
 export default async function AccountOrderDetailPage({
   params,
@@ -32,50 +34,81 @@ export default async function AccountOrderDetailPage({
     .select()
     .from(orders)
     .where(
-      and(eq(orders.orderNumber, orderNumber), eq(orders.userId, session.user.id))
+      and(
+        eq(orders.orderNumber, orderNumber),
+        eq(orders.userId, session.user.id)
+      )
     )
     .limit(1);
 
   if (!order) notFound();
 
-  const mods = (JSON.parse(order.modules) as string[]).filter(
-    isPaidModule
-  ) as PaidModule[];
+  const [item] = await db
+    .select()
+    .from(orderItems)
+    .where(eq(orderItems.orderId, order.id))
+    .limit(1);
+
+  const shipments = await db
+    .select()
+    .from(orderShipments)
+    .where(eq(orderShipments.orderId, order.id))
+    .orderBy(desc(orderShipments.shippedAt));
+
+  const features = featuresFromItem(item);
+  const mods = features.modules.filter(isPaidModule) as PaidModule[];
+  const badge = getCustomerOrderBadge(order);
+  const detailCopy = getCustomerOrderDetailCopy(order);
+  const paid = order.paymentStatus === "paid";
+  const delivered = shipments.length > 0 || order.shippingStatus === "shipped";
+  const configuring = paid && !delivered;
+  const latest = shipments[0];
+  const payload = latest
+    ? tryDecodeLicensePayload(latest.trackingNumber)
+    : null;
 
   return (
-    <div className="max-w-2xl">
-      <Link href="/account/orders" className="text-sm text-slate-500 hover:text-slate-800">
+    <div className="max-w-2xl space-y-5">
+      <Link
+        href="/account/orders"
+        className="text-sm text-slate-500 hover:text-slate-800"
+      >
         ← 返回订单列表
       </Link>
-      <h1 className="mt-4 text-2xl font-bold text-slate-900">{order.orderNumber}</h1>
-      <div className="mt-6 space-y-3 rounded-[24px] border border-slate-200 bg-white p-6 text-sm shadow-sm">
-        <p>
-          <span className="text-slate-500">状态：</span>
-          {statusLabel[order.status] || order.status}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">
+            {order.orderNumber}
+          </h1>
+          <p className="mt-2 text-sm text-slate-500">{detailCopy}</p>
+        </div>
+        <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">
+          {badge.badge}
+        </span>
+      </div>
+
+      <div className="space-y-3 rounded-[24px] border border-slate-200 bg-white p-6 text-sm shadow-sm">
         <p>
           <span className="text-slate-500">模块：</span>
-          {mods.map((m) => MODULE_LABELS[m]).join("、")}
+          {mods.map((m) => MODULE_LABELS[m]).join("、") || "—"}
         </p>
         <p>
           <span className="text-slate-500">时长：</span>
-          {isLicensePeriod(order.period) ? PERIOD_LABELS[order.period] : order.period}
+          {isLicensePeriod(features.period)
+            ? PERIOD_LABELS[features.period]
+            : features.period}
         </p>
         <p>
           <span className="text-slate-500">获客上限：</span>
-          {order.monthlyLeadsLimit}/月
+          {features.monthlyLeadsLimit}/月
         </p>
         <p>
           <span className="text-slate-500">金额：</span>¥
-          {formatYuanFromCents(order.amountCents)}
+          {formatYuanFromCents(order.totalAmountCents)}
         </p>
         <p>
           <span className="text-slate-500">联系人：</span>
           {order.contactName} / {order.companyName}
-        </p>
-        <p>
-          <span className="text-slate-500">邮箱 / 手机：</span>
-          {order.contactEmail} / {order.contactPhone}
         </p>
         {order.paidAt ? (
           <p>
@@ -85,10 +118,37 @@ export default async function AccountOrderDetailPage({
         ) : null}
       </div>
 
-      {order.status === "unpaid" ? (
+      {paid ? (
+        <OrderFulfillmentProgress
+          paid={paid}
+          configuring={configuring}
+          delivered={delivered}
+        />
+      ) : null}
+
+      {latest ? (
+        <LicenseDeliveryCard
+          code={latest.trackingNumber}
+          shippedAtLabel={latest.shippedAt.toLocaleString("zh-CN")}
+          moduleLabels={
+            payload
+              ? payload.modules.map(
+                  (m) => MODULE_LABELS[m as PaidModule] || m
+                )
+              : mods.map((m) => MODULE_LABELS[m])
+          }
+          expiresAtLabel={
+            payload
+              ? new Date(payload.expires_at).toLocaleString("zh-CN")
+              : null
+          }
+        />
+      ) : null}
+
+      {order.paymentStatus === "unpaid" && order.status === "unpaid" ? (
         <Link
           href={`/pay/${order.orderNumber}`}
-          className="mt-6 inline-flex h-11 items-center justify-center rounded-xl bg-[#3B82F6] px-5 text-sm font-semibold text-white"
+          className="inline-flex h-11 items-center justify-center rounded-xl bg-[#3B82F6] px-5 text-sm font-semibold text-white"
         >
           继续支付
         </Link>

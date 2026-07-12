@@ -1,15 +1,19 @@
 import { NextResponse } from "next/server";
-import { db } from "@/db";
-import { inquiries } from "@/db/schema";
-
-function createId() {
-  return `inq_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
-}
+import { createInquiryWithFirstMessage } from "@/server/admin/inquiries";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { name, company, email, phone, message } = body;
+    const {
+      name,
+      company,
+      email,
+      phone,
+      industry,
+      market,
+      priority,
+      message,
+    } = body;
 
     if (!name || !company || !email) {
       return NextResponse.json(
@@ -25,19 +29,15 @@ export async function POST(req: Request) {
       );
     }
 
-    const now = new Date();
-    const id = createId();
-
-    await db.insert(inquiries).values({
-      id,
+    const id = await createInquiryWithFirstMessage({
       name: String(name).trim(),
       company: String(company).trim(),
       email: String(email).trim().toLowerCase(),
       phone: phone ? String(phone).trim() : null,
-      message: message ? String(message).trim() : null,
-      status: "new",
-      createdAt: now,
-      updatedAt: now,
+      industry: industry ? String(industry).trim() : "",
+      market: market ? String(market).trim() : "",
+      priority: priority ? String(priority).trim() : "",
+      message: message ? String(message).trim() : "",
     });
 
     return NextResponse.json({ success: true, id }, { status: 201 });
