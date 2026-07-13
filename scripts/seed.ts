@@ -6,6 +6,11 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "../src/db/schema";
 import { createId } from "../src/lib/ids";
+import {
+  LICENSE_PERIODS,
+  PAID_MODULES,
+  buildDefaultPriceMatrix,
+} from "../src/lib/pricing";
 
 config({ path: ".env.local" });
 
@@ -38,6 +43,39 @@ async function main() {
       name: "VertaX Admin",
     });
     console.log("Seeded admin:", email);
+  }
+
+  const [settings] = await db
+    .select()
+    .from(schema.siteSettings)
+    .where(eq(schema.siteSettings.id, "default"))
+    .limit(1);
+  if (!settings) {
+    await db.insert(schema.siteSettings).values({
+      id: "default",
+      paymentSandboxMode: true,
+      updatedAt: new Date(),
+    });
+    console.log("Seeded site_settings default (sandbox on)");
+  }
+
+  const existingPrices = await db.select().from(schema.licensePrices);
+  if (existingPrices.length === 0) {
+    const matrix = buildDefaultPriceMatrix();
+    const now = new Date();
+    for (const mod of PAID_MODULES) {
+      for (const period of LICENSE_PERIODS) {
+        await db.insert(schema.licensePrices).values({
+          id: createId("lpr"),
+          module: mod,
+          period,
+          amountCents: matrix[mod][period],
+          autoFromMonthly: period !== "month",
+          updatedAt: now,
+        });
+      }
+    }
+    console.log("Seeded default license prices");
   }
 
   console.log("Admin login:", `${email} / ${password}`);

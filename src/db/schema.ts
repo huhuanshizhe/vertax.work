@@ -280,3 +280,39 @@ export type Order = typeof orders.$inferSelect;
 export type OrderItem = typeof orderItems.$inferSelect;
 export type OrderShipment = typeof orderShipments.$inferSelect;
 export type OrderActionLog = typeof orderActionLogs.$inferSelect;
+
+export const siteSettings = pgTable("site_settings", {
+  id: text("id").primaryKey().default("default"),
+  paymentSandboxMode: boolean("payment_sandbox_mode").notNull().default(true),
+  /** 获客雷达：每月获客数量上限（前台展示 & 下单写入订单） */
+  radarMonthlyLeadsLimit: integer("radar_monthly_leads_limit")
+    .notNull()
+    .default(500),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const licensePrices = pgTable(
+  "license_prices",
+  {
+    id: text("id").primaryKey(),
+    module: text("module").notNull(),
+    period: text("period").notNull(),
+    amountCents: integer("amount_cents").notNull(),
+    /** 非月周期：是否按「月价 × 月数」自动计价 */
+    autoFromMonthly: boolean("auto_from_monthly").notNull().default(true),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("license_prices_module_period_uidx").on(
+      table.module,
+      table.period
+    ),
+  ]
+);
+
+export type SiteSettings = typeof siteSettings.$inferSelect;
+export type LicensePrice = typeof licensePrices.$inferSelect;

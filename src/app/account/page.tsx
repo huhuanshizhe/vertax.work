@@ -7,7 +7,7 @@ import { AccountProfileForm } from "@/components/account/profile-form";
 
 export default async function AccountPage() {
   const session = await auth();
-  if (!session?.user?.id) redirect("/login?next=/account");
+  if (!session?.user?.id) redirect("/login?next=/account/orders");
 
   const [user] = await db
     .select()

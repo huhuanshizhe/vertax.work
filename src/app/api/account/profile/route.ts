@@ -11,6 +11,35 @@ const schema = z.object({
   phone: z.string().optional(),
 });
 
+export async function GET() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "未登录" }, { status: 401 });
+  }
+
+  const [user] = await db
+    .select({
+      name: users.name,
+      email: users.email,
+      company: users.company,
+      phone: users.phone,
+    })
+    .from(users)
+    .where(eq(users.id, session.user.id))
+    .limit(1);
+
+  if (!user) {
+    return NextResponse.json({ error: "用户不存在" }, { status: 404 });
+  }
+
+  return NextResponse.json({
+    name: user.name,
+    email: user.email,
+    company: user.company || "",
+    phone: user.phone || "",
+  });
+}
+
 export async function PATCH(req: Request) {
   const session = await auth();
   if (!session?.user?.id) {

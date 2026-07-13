@@ -1,17 +1,17 @@
 export type PaidModule = "radar" | "social" | "growth";
 export type LicensePeriod = "month" | "quarter" | "half" | "year";
 
-/** Monthly price in fen (分). 1.98 yuan = 198 fen */
+/** Monthly base price in fen (分). Used to derive default matrix. */
 export const MODULE_MONTHLY_CENTS: Record<PaidModule, number> = {
-  radar: 198,
-  social: 198,
-  growth: 98,
+  radar: 1980_00,
+  social: 1980_00,
+  growth: 980_00,
 };
 
 export const MODULE_LABELS: Record<PaidModule, string> = {
   radar: "获客雷达",
   social: "社媒营销",
-  growth: "增长系统",
+  growth: "内容增长",
 };
 
 export const MODULE_DESCRIPTIONS: Record<PaidModule, string> = {
@@ -44,6 +44,26 @@ export const LICENSE_PERIODS: LicensePeriod[] = [
   "year",
 ];
 
+export type PriceMatrix = Record<
+  PaidModule,
+  Record<LicensePeriod, number>
+>;
+
+/** Default prices: monthly × months for each period. */
+export function buildDefaultPriceMatrix(): PriceMatrix {
+  const matrix = {} as PriceMatrix;
+  for (const mod of PAID_MODULES) {
+    matrix[mod] = {} as Record<LicensePeriod, number>;
+    for (const period of LICENSE_PERIODS) {
+      matrix[mod][period] =
+        MODULE_MONTHLY_CENTS[mod] * PERIOD_MONTHS[period];
+    }
+  }
+  return matrix;
+}
+
+export const DEFAULT_PRICE_MATRIX = buildDefaultPriceMatrix();
+
 export function isPaidModule(value: string): value is PaidModule {
   return PAID_MODULES.includes(value as PaidModule);
 }
@@ -52,18 +72,24 @@ export function isLicensePeriod(value: string): value is LicensePeriod {
   return LICENSE_PERIODS.includes(value as LicensePeriod);
 }
 
+/** Fallback calculator using in-code defaults (or provided matrix). */
 export function calcOrderAmountCents(
   modules: PaidModule[],
-  period: LicensePeriod
+  period: LicensePeriod,
+  matrix: PriceMatrix = DEFAULT_PRICE_MATRIX
 ): number {
   const unique = [...new Set(modules)];
-  const months = PERIOD_MONTHS[period];
-  return unique.reduce(
-    (sum, mod) => sum + MODULE_MONTHLY_CENTS[mod] * months,
-    0
-  );
+  return unique.reduce((sum, mod) => sum + (matrix[mod]?.[period] ?? 0), 0);
 }
 
 export function formatYuanFromCents(cents: number): string {
   return (cents / 100).toFixed(2);
+}
+
+export function yuanToCents(yuan: number): number {
+  return Math.round(yuan * 100);
+}
+
+export function centsToYuanNumber(cents: number): number {
+  return cents / 100;
 }

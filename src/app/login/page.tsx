@@ -14,10 +14,13 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   const nextPath = useMemo(() => {
-    if (typeof window === "undefined") return "/account";
+    if (typeof window === "undefined") return "/account/orders";
     const params = new URLSearchParams(window.location.search);
     const next = params.get("next");
-    return next && next.startsWith("/") ? next : "/account";
+    // 默认进入订单页；旧链接里的 /account（资料页）也统一落到订单
+    if (!next || !next.startsWith("/")) return "/account/orders";
+    if (next === "/account") return "/account/orders";
+    return next;
   }, []);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {

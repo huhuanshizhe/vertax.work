@@ -5,13 +5,13 @@ import { db } from "@/db";
 import { orderItems, orders } from "@/db/schema";
 import { createId, createOrderNumber } from "@/lib/ids";
 import {
-  DEFAULT_MONTHLY_LEADS_LIMIT,
-  calcOrderAmountCents,
   isLicensePeriod,
   isPaidModule,
   type PaidModule,
 } from "@/lib/pricing";
 import { appendOrderLog } from "@/server/admin/orders";
+import { calcOrderAmountFromDb } from "@/server/site/license-prices";
+import { getRadarMonthlyLeadsLimit } from "@/server/site/settings";
 
 const schema = z.object({
   modules: z.array(z.string()).min(1),
@@ -21,6 +21,7 @@ const schema = z.object({
   contactEmail: z.string().email(),
   contactPhone: z.string().min(1),
   note: z.string().optional(),
+  paymentMethod: z.enum(["alipay"]).default("alipay"),
 });
 
 export async function POST(req: Request) {
@@ -47,7 +48,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "请至少选择一个模块" }, { status: 400 });
     }
 
-    const amountCents = calcOrderAmountCents(modules, parsed.data.period);
+    const amountCents = await calcOrderAmountFromDb(
+      modules,
+      parsed.data.period
+    );
+    const monthlyLeadsLimit = await getRadarMonthlyLeadsLimit();
     const id = createId("ord");
     const orderNumber = createOrderNumber();
     const now = new Date();
@@ -60,7 +65,7 @@ export async function POST(req: Request) {
       paymentStatus: "unpaid",
       shippingStatus: "unshipped",
       refundStatus: "none",
-      paymentMethod: "alipay",
+      paymentMethod: parsed.data.paymentMethod,
       subtotalCents: amountCents,
       totalAmountCents: amountCents,
       currency: "CNY",
@@ -81,7 +86,7 @@ export async function POST(req: Request) {
       featureSelections: {
         modules,
         period: parsed.data.period,
-        monthlyLeadsLimit: DEFAULT_MONTHLY_LEADS_LIMIT,
+        monthlyLeadsLimit,
       },
       quantity: 1,
       unitPriceCents: amountCents,

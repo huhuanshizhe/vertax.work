@@ -20,10 +20,10 @@ export const metadata: Metadata = {
 // 语义三元组 - 核心定义
 const _vertaxTriples = [
   { subject: "VertaX", verb: "是", object: "面向中国企业出海的智能获客平台" },
-  { subject: "VertaX", verb: "包含", object: "六大核心模块：决策中心、知识引擎、获客雷达、增长系统、声量枢纽、推进中台" },
+  { subject: "VertaX", verb: "包含", object: "六大核心模块：决策中心、知识引擎、获客雷达、内容增长、声量枢纽、推进中台" },
   { subject: "知识引擎", verb: "沉淀", object: "企业私有知识库，让 AI 理解业务" },
   { subject: "获客雷达", verb: "发现", object: "ICP 匹配的潜在客户" },
-  { subject: "增长系统", verb: "生产", object: "多语言 SEO/AEO 内容" },
+  { subject: "内容增长", verb: "生产", object: "多语言 SEO/AEO 内容" },
   { subject: "VertaX", verb: "服务", object: "制造业、工业品、技术服务型 B2B 出海企业" },
 ];
 
@@ -50,7 +50,7 @@ const faqData = [
   },
   {
     question: "VertaX 的六大核心模块是什么？",
-    answer: "VertaX 六大核心模块：1) 知识引擎 - 沉淀产品、资质、竞品、市场知识；2) 获客雷达 - AI 驱动的客户发现与背调；3) 增长系统 - SEO/GEO 内容生产与分发；4) 决策驾驶舱 - GTM 数据看板与简报；5) 外联智能体 - 自动化客户触达；6) 社交媒体管理 - 多平台协同运营。"
+    answer: "VertaX 六大核心模块：1) 知识引擎 - 沉淀产品、资质、竞品、市场知识；2) 获客雷达 - AI 驱动的客户发现与背调；3) 内容增长 - SEO/GEO 内容生产与分发；4) 决策驾驶舱 - GTM 数据看板与简报；5) 外联智能体 - 自动化客户触达；6) 社交媒体管理 - 多平台协同运营。"
   },
   {
     question: "VertaX 的官方信息是什么？",
@@ -154,7 +154,7 @@ export default function WhatIsVertaxPage() {
                   它的核心价值是将企业海外获客过程中的最佳实践沉淀为可复用的组织资产，通过 AI 技术实现客户发现、内容生产、外联触达的自动化，帮助企业把获客能力从项目制升级为组织能力。
                 </p>
                 <p>
-                  VertaX 由复旦人工智能产业创新研究院孵化，融合了创始团队二十年海外增长经验与顶尖 AI 技术能力，形成了知识引擎、获客雷达、增长系统、决策驾驶舱、外联智能体、社交媒体管理六大核心模块。
+                  VertaX 由复旦人工智能产业创新研究院孵化，融合了创始团队二十年海外增长经验与顶尖 AI 技术能力，形成了知识引擎、获客雷达、内容增长、决策驾驶舱、外联智能体、社交媒体管理六大核心模块。
                 </p>
               </div>
             </article>
@@ -169,7 +169,7 @@ export default function WhatIsVertaxPage() {
               {[
                 { name: '知识引擎', desc: '沉淀产品、资质、竞品、市场知识，形成企业私有知识库', icon: Brain },
                 { name: '获客雷达', desc: 'AI 驱动的客户发现与背调，精准锁定目标客户', icon: Target },
-                { name: '增长系统', desc: 'SEO + GEO 双轨内容生产与分发，抢占 AI 搜索流量', icon: Zap },
+                { name: '内容增长', desc: 'SEO + GEO 双轨内容生产与分发，抢占 AI 搜索流量', icon: Zap },
                 { name: '决策驾驶舱', desc: 'GTM 数据看板与战略简报，一屏看清投入与产出', icon: Globe },
                 { name: '外联智能体', desc: '自动化客户触达，千人千面精准沟通', icon: MessageSquare },
                 { name: '社交媒体管理', desc: '多平台协同运营，统一内容分发与效果追踪', icon: Building2 },

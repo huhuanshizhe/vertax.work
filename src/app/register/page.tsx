@@ -14,10 +14,12 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
 
   const nextPath = useMemo(() => {
-    if (typeof window === "undefined") return "/account";
+    if (typeof window === "undefined") return "/account/orders";
     const params = new URLSearchParams(window.location.search);
     const next = params.get("next");
-    return next && next.startsWith("/") ? next : "/account";
+    if (!next || !next.startsWith("/")) return "/account/orders";
+    if (next === "/account") return "/account/orders";
+    return next;
   }, []);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {

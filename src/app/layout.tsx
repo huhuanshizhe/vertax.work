@@ -48,7 +48,7 @@ export const metadata: Metadata = {
     "B2B 获客",
     "知识引擎",
     "获客雷达",
-    "增长系统",
+    "内容增长",
     "GTM 系统",
   ].join(", "),
   authors: [{ name: "VertaX Team", url: SITE_URL }],

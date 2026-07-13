@@ -6,7 +6,7 @@ export type KnownPaidModule = (typeof KNOWN_PAID_MODULES)[number];
 export const MODULE_CATALOG: { key: KnownPaidModule; label: string }[] = [
   { key: "radar", label: "获客雷达" },
   { key: "social", label: "社媒营销" },
-  { key: "growth", label: "增长系统" },
+  { key: "growth", label: "内容增长" },
 ];
 
 export function isKnownPaidModule(value: string): value is KnownPaidModule {

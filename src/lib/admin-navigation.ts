@@ -18,6 +18,22 @@ export const adminNavItems: AdminNavItem[] = [
       { key: "/admin/customers", title: "客户管理", href: "/admin/customers" },
     ],
   },
+  {
+    key: "site-management",
+    title: "站点管理",
+    children: [
+      {
+        key: "/admin/site/pricing",
+        title: "价格配置",
+        href: "/admin/site/pricing",
+      },
+      {
+        key: "/admin/site/config",
+        title: "全局配置",
+        href: "/admin/site/config",
+      },
+    ],
+  },
 ];
 
 function flattenNavItems(items: AdminNavItem[]): AdminNavItem[] {
@@ -64,6 +80,8 @@ export function getAdminNavSelectedKey(pathname: string) {
   if (pathname.startsWith("/admin/orders")) return "/admin/orders";
   if (pathname.startsWith("/admin/inquiries")) return "/admin/inquiries";
   if (pathname.startsWith("/admin/customers")) return "/admin/customers";
+  if (pathname.startsWith("/admin/site/pricing")) return "/admin/site/pricing";
+  if (pathname.startsWith("/admin/site/config")) return "/admin/site/config";
   return (
     [...flattenedNavItems]
       .filter((item) => item.href)

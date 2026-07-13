@@ -3,7 +3,9 @@
 import {
   CommentOutlined,
   DashboardOutlined,
+  DollarOutlined,
   OrderedListOutlined,
+  SettingOutlined,
   TeamOutlined,
 } from "@ant-design/icons";
 import { App, Button, Dropdown, Layout, Menu, Space, Typography } from "antd";
@@ -27,6 +29,9 @@ const iconByKey: Record<string, React.ReactNode> = {
   "/admin/orders": <OrderedListOutlined />,
   "/admin/inquiries": <CommentOutlined />,
   "/admin/customers": <TeamOutlined />,
+  "site-management": <SettingOutlined />,
+  "/admin/site/pricing": <DollarOutlined />,
+  "/admin/site/config": <SettingOutlined />,
 };
 
 function toMenuItems(items: AdminNavItem[]): NonNullable<MenuProps["items"]> {

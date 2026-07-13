@@ -131,8 +131,20 @@ export function OrderDetailClient(props: DetailProps) {
   const [saving, setSaving] = useState(false);
   const [licenseOpen, setLicenseOpen] = useState(false);
   const [verifyOpen, setVerifyOpen] = useState(false);
-  const [verifyCode, setVerifyCode] = useState("");
-  const [verifyResult, setVerifyResult] = useState("");
+  const [verifyLoading, setVerifyLoading] = useState(false);
+  const [verifyError, setVerifyError] = useState("");
+  const [verifyData, setVerifyData] = useState<{
+    ok: boolean;
+    expired: boolean;
+    payload: {
+      v: number;
+      customer_name: string;
+      modules: string[];
+      period: string;
+      expires_at: string;
+      monthly_leads_limit: number;
+    };
+  } | null>(null);
 
   const defaults = props.item;
   const [modules, setModules] = useState<string[]>(defaults?.modules || []);
@@ -150,6 +162,27 @@ export function OrderDetailClient(props: DetailProps) {
     return toDateInputValue(addDuration(startOfToday(), p));
   });
   const [generating, setGenerating] = useState(false);
+
+  function openLicenseModal() {
+    const orderModules = defaults?.modules || [];
+    const orderPeriod = (defaults?.period as LicensePeriod) || "month";
+    setModules(orderModules.length ? [...orderModules] : []);
+    setPeriod(orderPeriod);
+    // 默认取订单下单时保存的获客上限（前台价格配置写入）
+    setLeadsLimit(
+      typeof defaults?.monthlyLeadsLimit === "number"
+        ? defaults.monthlyLeadsLimit
+        : 500
+    );
+    if (orderPeriod === "custom") {
+      setExpiresAt(toDateInputValue(addDuration(startOfToday(), "month")));
+    } else {
+      setExpiresAt(
+        toDateInputValue(addDuration(startOfToday(), orderPeriod))
+      );
+    }
+    setLicenseOpen(true);
+  }
 
   const moduleLabels = useMemo(
     () =>
@@ -232,27 +265,44 @@ export function OrderDetailClient(props: DetailProps) {
     }
   }
 
-  async function runVerify() {
+  async function verifyShipment(code: string) {
+    setVerifyOpen(true);
+    setVerifyLoading(true);
+    setVerifyError("");
+    setVerifyData(null);
     try {
       const res = await fetch("/api/admin/licenses/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: verifyCode.trim() }),
+        body: JSON.stringify({ code: code.trim() }),
       });
       const data = await res.json();
-      if (!res.ok) {
-        setVerifyResult(`失败：${data.error || "验签失败"}`);
+      if (!res.ok || !data.ok || !data.payload) {
+        setVerifyError(data.error || "验签失败");
         return;
       }
-      setVerifyResult(
-        JSON.stringify(
-          { ok: data.ok, expired: data.expired, payload: data.payload },
-          null,
-          2
-        )
-      );
+      setVerifyData({
+        ok: Boolean(data.ok),
+        expired: Boolean(data.expired),
+        payload: data.payload,
+      });
     } catch {
-      setVerifyResult("网络错误");
+      setVerifyError("网络错误，请稍后重试");
+    } finally {
+      setVerifyLoading(false);
+    }
+  }
+
+  function formatLeadsLimit(limit: number) {
+    if (limit === -1) return "不限制";
+    return String(limit);
+  }
+
+  function formatExpiry(iso: string) {
+    try {
+      return new Date(iso).toLocaleDateString("zh-CN");
+    } catch {
+      return iso;
     }
   }
 
@@ -430,20 +480,9 @@ export function OrderDetailClient(props: DetailProps) {
       <Card
         title="授权记录"
         extra={
-          <Space>
-            <Button
-              onClick={() => {
-                setVerifyCode(props.shipments[0]?.trackingNumber || "");
-                setVerifyResult("");
-                setVerifyOpen(true);
-              }}
-            >
-              验签测试
-            </Button>
-            <Button type="primary" onClick={() => setLicenseOpen(true)}>
-              生成授权码
-            </Button>
-          </Space>
+          <Button type="primary" onClick={openLicenseModal}>
+            生成授权码
+          </Button>
         }
       >
         {props.shipments.length === 0 ? (
@@ -466,16 +505,23 @@ export function OrderDetailClient(props: DetailProps) {
                   签发时间：{s.shippedAt}
                   {s.note ? ` · ${s.note}` : ""}
                 </div>
-                <Button
-                  size="small"
-                  style={{ marginTop: 8 }}
-                  onClick={async () => {
-                    await navigator.clipboard.writeText(s.trackingNumber);
-                    message.success("已复制授权码");
-                  }}
-                >
-                  复制
-                </Button>
+                <Space style={{ marginTop: 8 }}>
+                  <Button
+                    size="small"
+                    onClick={async () => {
+                      await navigator.clipboard.writeText(s.trackingNumber);
+                      message.success("已复制授权码");
+                    }}
+                  >
+                    复制
+                  </Button>
+                  <Button
+                    size="small"
+                    onClick={() => void verifyShipment(s.trackingNumber)}
+                  >
+                    验签测试
+                  </Button>
+                </Space>
               </div>
             ))}
           </div>
@@ -610,15 +656,22 @@ export function OrderDetailClient(props: DetailProps) {
           <div>
             <div style={{ fontWeight: 600, marginBottom: 8 }}>
               每月获客数量上限
+              <Tag color="orange" style={{ marginLeft: 8 }}>
+                获客雷达
+              </Tag>
             </div>
             <InputNumber
               style={{ width: "100%" }}
               value={leadsLimit}
               onChange={(v) => setLeadsLimit(v)}
-              placeholder="默认 500；清空不填表示不限制"
+              placeholder="来自订单；清空不填表示不限制"
             />
             <Typography.Paragraph type="secondary" style={{ marginTop: 8 }}>
-              默认 500；清空不填表示不限制；不可填写 0 或负数。
+              默认取本订单下单时的获客上限
+              {typeof defaults?.monthlyLeadsLimit === "number"
+                ? `（当前订单：${defaults.monthlyLeadsLimit}/月）`
+                : ""}
+              ；清空不填表示不限制；不可填写 0 或负数。
             </Typography.Paragraph>
           </div>
 
@@ -640,31 +693,147 @@ export function OrderDetailClient(props: DetailProps) {
       </Modal>
 
       <Modal
-        title="验签测试"
+        title="验签结果"
         open={verifyOpen}
         onCancel={() => setVerifyOpen(false)}
-        onOk={() => void runVerify()}
-        okText="验签"
+        footer={[
+          <Button key="close" onClick={() => setVerifyOpen(false)}>
+            关闭
+          </Button>,
+        ]}
       >
-        <Input.TextArea
-          rows={4}
-          value={verifyCode}
-          onChange={(e) => setVerifyCode(e.target.value)}
-          placeholder="粘贴 VERTAX1... 授权码"
-        />
-        {verifyResult ? (
-          <pre
-            style={{
-              marginTop: 12,
-              background: "#f8fafc",
-              padding: 12,
-              borderRadius: 8,
-              maxHeight: 260,
-              overflow: "auto",
-            }}
-          >
-            {verifyResult}
-          </pre>
+        {verifyLoading ? (
+          <Typography.Text type="secondary">验签中…</Typography.Text>
+        ) : null}
+        {verifyError ? (
+          <Typography.Text type="danger">{verifyError}</Typography.Text>
+        ) : null}
+        {verifyData?.payload ? (
+          <div style={{ display: "grid", gap: 14 }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 12,
+                alignItems: "center",
+              }}
+            >
+              <span style={{ color: "#64748b" }}>验签状态</span>
+              <Tag color="success">通过</Tag>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 12,
+                alignItems: "center",
+              }}
+            >
+              <span style={{ color: "#64748b" }}>是否过期</span>
+              <Tag color={verifyData.expired ? "default" : "success"}>
+                {verifyData.expired ? "已过期" : "未过期"}
+              </Tag>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 12,
+              }}
+            >
+              <span style={{ color: "#64748b" }}>客户名称</span>
+              <span>{verifyData.payload.customer_name || "—"}</span>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 12,
+              }}
+            >
+              <span style={{ color: "#64748b" }}>授权时长</span>
+              <span>
+                {PERIOD_LABELS[
+                  verifyData.payload.period as keyof typeof PERIOD_LABELS
+                ] || verifyData.payload.period}
+              </span>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 12,
+              }}
+            >
+              <span style={{ color: "#64748b" }}>每月获客上限</span>
+              <span>
+                {formatLeadsLimit(verifyData.payload.monthly_leads_limit)}
+              </span>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 12,
+                alignItems: "flex-start",
+              }}
+            >
+              <span style={{ color: "#64748b", flexShrink: 0 }}>开通模块</span>
+              <Space size={[6, 6]} wrap style={{ justifyContent: "flex-end" }}>
+                {verifyData.payload.modules.length === 0 ? (
+                  <span>—</span>
+                ) : (
+                  verifyData.payload.modules.map((m) => (
+                    <Tag
+                      key={m}
+                      color="blue"
+                      style={{ marginInlineEnd: 0, fontWeight: 600 }}
+                    >
+                      {MODULE_LABELS[m as keyof typeof MODULE_LABELS] || m}
+                    </Tag>
+                  ))
+                )}
+              </Space>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 12,
+              }}
+            >
+              <span style={{ color: "#64748b" }}>过期日期</span>
+              <span>{formatExpiry(verifyData.payload.expires_at)}</span>
+            </div>
+            <details style={{ marginTop: 4 }}>
+              <summary
+                style={{
+                  cursor: "pointer",
+                  color: "#64748b",
+                  fontSize: 13,
+                  userSelect: "none",
+                }}
+              >
+                原始 JSON
+              </summary>
+              <pre
+                style={{
+                  marginTop: 8,
+                  marginBottom: 0,
+                  background: "#f8fafc",
+                  border: "1px solid #eef2f7",
+                  borderRadius: 10,
+                  padding: 12,
+                  fontSize: 12,
+                  lineHeight: 1.5,
+                  overflow: "auto",
+                  maxHeight: 240,
+                }}
+              >
+                {JSON.stringify(verifyData.payload, null, 2)}
+              </pre>
+            </details>
+          </div>
         ) : null}
       </Modal>
     </div>

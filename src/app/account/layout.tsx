@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { auth } from "@/auth/user-auth";
 import { redirect } from "next/navigation";
-import { signOut } from "@/auth/user-auth";
+import { AccountLogoutButton } from "@/components/account/account-logout-button";
 
 export default async function AccountLayout({
   children,
@@ -10,7 +10,7 @@ export default async function AccountLayout({
 }) {
   const session = await auth();
   if (!session?.user) {
-    redirect("/login?next=/account");
+    redirect("/login?next=/account/orders");
   }
 
   return (
@@ -31,16 +31,7 @@ export default async function AccountLayout({
               购买
             </Link>
           </div>
-          <form
-            action={async () => {
-              "use server";
-              await signOut({ redirectTo: "/" });
-            }}
-          >
-            <button type="submit" className="text-sm text-slate-500 hover:text-slate-800">
-              退出
-            </button>
-          </form>
+          <AccountLogoutButton />
         </div>
       </header>
       <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">{children}</main>

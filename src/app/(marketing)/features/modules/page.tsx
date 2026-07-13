@@ -4,9 +4,9 @@ import { ArrowRight, Brain, Target, TrendingUp, Globe, MessageSquare, Building2,
 import { BreadcrumbSchema, breadcrumbPaths } from '@/components/seo/breadcrumb-schema';
 
 export const metadata: Metadata = {
-  title: 'VertaX 六大模块全景图 - 决策中心、知识引擎、获客雷达、增长系统、声量枢纽、推进中台 | VertaX',
-  description: 'VertaX 六大核心模块：决策中心（经营决策）、知识引擎（知识沉淀）、获客雷达（客户识别）、增长系统（内容增长）、声量枢纽（品牌传播）、推进中台（任务协同）。帮助制造业、工业品、技术服务型企业建立完整的全球增长闭环。',
-  keywords: ['VertaX功能', '决策中心', '知识引擎', '获客雷达', '增长系统', '声量枢纽', '推进中台'],
+  title: 'VertaX 六大模块全景图 - 决策中心、知识引擎、获客雷达、内容增长、声量枢纽、推进中台 | VertaX',
+  description: 'VertaX 六大核心模块：决策中心（经营决策）、知识引擎（知识沉淀）、获客雷达（客户识别）、内容增长（SEO/GEO）、声量枢纽（品牌传播）、推进中台（任务协同）。帮助制造业、工业品、技术服务型企业建立完整的全球增长闭环。',
+  keywords: ['VertaX功能', '决策中心', '知识引擎', '获客雷达', '内容增长', '声量枢纽', '推进中台'],
   openGraph: {
     title: 'VertaX 六大模块全景图',
     description: 'VertaX 六大核心模块，帮助制造业、工业品、技术服务型企业建立完整的全球增长闭环。',
@@ -50,7 +50,7 @@ const modules = [
   },
   {
     id: 'growth-system',
-    name: '增长系统',
+    name: '内容增长',
     nameEn: 'Inbound Growth Engine',
     icon: TrendingUp,
     color: 'emerald',

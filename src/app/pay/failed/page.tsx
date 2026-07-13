@@ -1,14 +1,14 @@
 import { redirect } from "next/navigation";
 
-/** Legacy success URL → order detail */
-export default async function PaySuccessRedirect({
+/** Legacy failed URL → back to pay page or orders */
+export default async function PayFailedRedirect({
   searchParams,
 }: {
   searchParams: Promise<{ order?: string }>;
 }) {
   const { order } = await searchParams;
   if (order) {
-    redirect(`/account/orders/${encodeURIComponent(order)}`);
+    redirect(`/pay/${encodeURIComponent(order)}`);
   }
   redirect("/account/orders");
 }
