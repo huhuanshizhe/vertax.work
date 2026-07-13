@@ -2,6 +2,10 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { siteSettings } from "@/db/schema";
 import { DEFAULT_MONTHLY_LEADS_LIMIT } from "@/lib/pricing";
+import {
+  DEFAULT_LICENSE_USAGE_LIMIT_MONTHS,
+  UNLIMITED_USAGE_LIMIT_MONTHS,
+} from "@/lib/license/duration";
 
 export type PaymentMode = "test" | "live";
 
@@ -20,6 +24,7 @@ export async function ensureSiteSettings() {
       id: "default",
       paymentSandboxMode: true,
       radarMonthlyLeadsLimit: DEFAULT_MONTHLY_LEADS_LIMIT,
+      licenseUsageLimitMonths: DEFAULT_LICENSE_USAGE_LIMIT_MONTHS,
       updatedAt: new Date(),
     })
     .returning();
@@ -36,14 +41,26 @@ export async function getRadarMonthlyLeadsLimit() {
   return settings.radarMonthlyLeadsLimit ?? DEFAULT_MONTHLY_LEADS_LIMIT;
 }
 
+export async function getLicenseUsageLimitMonths() {
+  const settings = await getSiteSettings();
+  const value = settings.licenseUsageLimitMonths;
+  if (value === UNLIMITED_USAGE_LIMIT_MONTHS) return value;
+  if (typeof value === "number" && Number.isInteger(value) && value >= 1) {
+    return value;
+  }
+  return DEFAULT_LICENSE_USAGE_LIMIT_MONTHS;
+}
+
 export async function updateSiteSettings(input: {
   paymentSandboxMode?: boolean;
   radarMonthlyLeadsLimit?: number;
+  licenseUsageLimitMonths?: number;
 }) {
   await ensureSiteSettings();
   const patch: {
     paymentSandboxMode?: boolean;
     radarMonthlyLeadsLimit?: number;
+    licenseUsageLimitMonths?: number;
     updatedAt: Date;
   } = { updatedAt: new Date() };
 
@@ -55,6 +72,14 @@ export async function updateSiteSettings(input: {
       1,
       Math.floor(input.radarMonthlyLeadsLimit)
     );
+  }
+  if (typeof input.licenseUsageLimitMonths === "number") {
+    const months = Math.floor(input.licenseUsageLimitMonths);
+    if (months === UNLIMITED_USAGE_LIMIT_MONTHS) {
+      patch.licenseUsageLimitMonths = UNLIMITED_USAGE_LIMIT_MONTHS;
+    } else {
+      patch.licenseUsageLimitMonths = Math.max(1, months);
+    }
   }
 
   const [updated] = await db

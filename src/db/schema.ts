@@ -202,6 +202,45 @@ export const orderShipments = pgTable(
   (table) => [index("order_shipments_order_id_idx").on(table.orderId)]
 );
 
+/**
+ * Manual / customer-service licenses, independent of orders.
+ * Shares the same VERTAX1 signing logic as order_shipments.
+ */
+export const customerLicenses = pgTable(
+  "customer_licenses",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    code: text("code").notNull(),
+    modules: jsonb("modules").$type<string[]>().notNull(),
+    period: text("period").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    monthlyLeadsLimit: integer("monthly_leads_limit").notNull().default(500),
+    /** 使用时限（月）；-1 = 不限制 */
+    usageLimitMonths: integer("usage_limit_months").notNull().default(1),
+    /** 使用时限截止；不限制时为 null */
+    usageExpiresAt: timestamp("usage_expires_at", { withTimezone: true }),
+    enabled: boolean("enabled").notNull().default(true),
+    payloadJson: jsonb("payload_json").$type<Record<string, unknown>>(),
+    adminId: text("admin_id").references(() => admins.id, {
+      onDelete: "set null",
+    }),
+    issuedAt: timestamp("issued_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("customer_licenses_code_uidx").on(table.code),
+    index("customer_licenses_user_id_idx").on(table.userId),
+    index("customer_licenses_created_at_idx").on(table.createdAt),
+  ]
+);
+
 export const orderActionLogs = pgTable(
   "order_action_logs",
   {
@@ -279,6 +318,7 @@ export type Admin = typeof admins.$inferSelect;
 export type Order = typeof orders.$inferSelect;
 export type OrderItem = typeof orderItems.$inferSelect;
 export type OrderShipment = typeof orderShipments.$inferSelect;
+export type CustomerLicense = typeof customerLicenses.$inferSelect;
 export type OrderActionLog = typeof orderActionLogs.$inferSelect;
 
 export const siteSettings = pgTable("site_settings", {
@@ -288,6 +328,10 @@ export const siteSettings = pgTable("site_settings", {
   radarMonthlyLeadsLimit: integer("radar_monthly_leads_limit")
     .notNull()
     .default(500),
+  /** 授权码使用时限（月）；-1 = 不限制；默认 1 */
+  licenseUsageLimitMonths: integer("license_usage_limit_months")
+    .notNull()
+    .default(1),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

@@ -47,10 +47,20 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: "参数无效" }, { status: 400 });
     }
 
+    const mode = parsed.data.paymentSandboxMode ? "test" : "live";
+    if (!parsed.data.paymentSandboxMode && !isAlipayConfigured("live")) {
+      return NextResponse.json(
+        {
+          error:
+            "Live 密钥未配置：请在环境变量填写 ALIPAY_LIVE_APP_ID / PRIVATE_KEY / ALIPAY_PUBLIC_KEY 后重试",
+        },
+        { status: 400 }
+      );
+    }
+
     const settings = await updateSiteSettings({
       paymentSandboxMode: parsed.data.paymentSandboxMode,
     });
-    const mode = settings.paymentSandboxMode ? "test" : "live";
 
     return NextResponse.json({
       success: true,

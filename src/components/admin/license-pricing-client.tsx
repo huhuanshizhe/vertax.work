@@ -24,6 +24,10 @@ import {
   type LicensePeriod,
   type PaidModule,
 } from "@/lib/pricing";
+import {
+  DEFAULT_LICENSE_USAGE_LIMIT_MONTHS,
+  UNLIMITED_USAGE_LIMIT_MONTHS,
+} from "@/lib/license/duration";
 
 const DERIVED_PERIODS = LICENSE_PERIODS.filter((p) => p !== "month");
 
@@ -47,6 +51,9 @@ export function LicensePricingClient() {
   const [radarMonthlyLeadsLimit, setRadarMonthlyLeadsLimit] = useState(
     DEFAULT_MONTHLY_LEADS_LIMIT
   );
+  const [licenseUsageLimitMonths, setLicenseUsageLimitMonths] = useState<
+    number | null
+  >(DEFAULT_LICENSE_USAGE_LIMIT_MONTHS);
 
   async function load() {
     setLoading(true);
@@ -56,6 +63,12 @@ export function LicensePricingClient() {
       if (!res.ok) throw new Error(data.error || "加载失败");
       setRadarMonthlyLeadsLimit(
         Number(data.radarMonthlyLeadsLimit) || DEFAULT_MONTHLY_LEADS_LIMIT
+      );
+      const usage = data.licenseUsageLimitMonths;
+      setLicenseUsageLimitMonths(
+        usage === UNLIMITED_USAGE_LIMIT_MONTHS || usage === null
+          ? null
+          : Number(usage) || DEFAULT_LICENSE_USAGE_LIMIT_MONTHS
       );
       const next = PAID_MODULES.map((mod) => {
         const amounts = {} as Record<LicensePeriod, number>;
@@ -252,11 +265,15 @@ export function LicensePricingClient() {
       const res = await fetch("/api/admin/license-prices", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items, radarMonthlyLeadsLimit }),
+        body: JSON.stringify({
+          items,
+          radarMonthlyLeadsLimit,
+          licenseUsageLimitMonths,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "保存失败");
-      message.success("价格已保存");
+      message.success("授权配置已保存");
       await load();
     } catch (err) {
       message.error(err instanceof Error ? err.message : "保存失败");
@@ -286,7 +303,7 @@ export function LicensePricingClient() {
 
   return (
     <Card
-      title="授权价格配置"
+      title="授权配置"
       extra={
         <Space>
           <Button onClick={() => void handleReset()} loading={saving}>
@@ -307,8 +324,32 @@ export function LicensePricingClient() {
         showIcon
         style={{ marginBottom: 16 }}
         message="获客雷达含「每月获客上限」硬指标；价格以月价为基数"
-        description="「乘月数」= 月价 × 月数。获客上限仅归属获客雷达，默认 500，会写入前台下单与授权默认值。"
+        description="「乘月数」= 月价 × 月数。获客上限仅归属获客雷达，默认 500，会写入前台下单与授权默认值。授权码验证时限默认 1 个月，清空保存为不限制。"
       />
+      <div
+        style={{
+          marginBottom: 16,
+          padding: 16,
+          border: "1px solid #eef2f7",
+          borderRadius: 12,
+          background: "#fafbfc",
+        }}
+      >
+        <Typography.Text strong>授权码验证时限</Typography.Text>
+        <div style={{ marginTop: 8, maxWidth: 320 }}>
+          <InputNumber
+            min={1}
+            value={licenseUsageLimitMonths}
+            onChange={(v) => setLicenseUsageLimitMonths(v)}
+            placeholder="清空表示不限制"
+            addonAfter="个月"
+            style={{ width: "100%" }}
+          />
+        </div>
+        <Typography.Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 0 }}>
+          自生成起多久内可被用户验证/激活；与授权到期日不同。默认 1；清空保存为不限制。
+        </Typography.Paragraph>
+      </div>
       <Table
         loading={loading}
         pagination={false}
@@ -321,6 +362,7 @@ export function LicensePricingClient() {
         <Tag color="blue">单位：人民币元</Tag>
         <Tag color="orange">获客雷达 · 每月获客上限</Tag>
         <Tag>乘月数 = 月价 × 月数</Tag>
+        <Tag color="purple">授权码验证时限</Tag>
       </div>
     </Card>
   );

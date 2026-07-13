@@ -16,6 +16,11 @@ export const adminNavItems: AdminNavItem[] = [
       { key: "/admin/orders", title: "订单管理", href: "/admin/orders" },
       { key: "/admin/inquiries", title: "询盘管理", href: "/admin/inquiries" },
       { key: "/admin/customers", title: "客户管理", href: "/admin/customers" },
+      {
+        key: "/admin/customer-licenses",
+        title: "客户授权",
+        href: "/admin/customer-licenses",
+      },
     ],
   },
   {
@@ -24,7 +29,7 @@ export const adminNavItems: AdminNavItem[] = [
     children: [
       {
         key: "/admin/site/pricing",
-        title: "价格配置",
+        title: "授权配置",
         href: "/admin/site/pricing",
       },
       {
@@ -79,6 +84,8 @@ export function getAdminNavOpenKeys(pathname: string) {
 export function getAdminNavSelectedKey(pathname: string) {
   if (pathname.startsWith("/admin/orders")) return "/admin/orders";
   if (pathname.startsWith("/admin/inquiries")) return "/admin/inquiries";
+  if (pathname.startsWith("/admin/customer-licenses"))
+    return "/admin/customer-licenses";
   if (pathname.startsWith("/admin/customers")) return "/admin/customers";
   if (pathname.startsWith("/admin/site/pricing")) return "/admin/site/pricing";
   if (pathname.startsWith("/admin/site/config")) return "/admin/site/config";

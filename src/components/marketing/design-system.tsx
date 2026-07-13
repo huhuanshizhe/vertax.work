@@ -297,7 +297,7 @@ export function MarketingFooter() {
                 </p>
               </div>
               <div className="text-center">
-                <Image alt="业务联系二维码" className="h-14 w-14 rounded-xl" height={56} src="/contact-wechat.jpg" width={56} />
+                <Image alt="业务联系二维码" className="h-14 w-14 rounded-xl" height={56} src="/contact-wechat.png" width={56} />
                 <p className="mt-2 text-[10px]" style={{ color: colors.text.muted }}>
                   业务联系
                 </p>

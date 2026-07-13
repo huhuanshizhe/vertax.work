@@ -1,8 +1,10 @@
 import crypto from "node:crypto";
 import {
+  computeUsageExpiresAtIso,
   isLicensePeriod,
   type LicensePeriod,
   UNLIMITED_MONTHLY_LEADS_LIMIT,
+  UNLIMITED_USAGE_LIMIT_MONTHS,
 } from "./duration";
 import { isValidModuleSlug } from "./module-catalog";
 
@@ -18,6 +20,12 @@ export interface LicensePayload {
   period: LicensePeriod;
   expires_at: string;
   monthly_leads_limit: number;
+  /** 签发时刻 ISO；旧码可能缺失 */
+  issued_at?: string;
+  /** 使用时限（月）；-1 不限制；旧码可能缺失 */
+  usage_limit_months?: number;
+  /** 使用时限截止 ISO；不限制或不存在时省略 */
+  usage_expires_at?: string;
   ext?: Record<string, unknown>;
 }
 
@@ -76,15 +84,18 @@ function canonicalPayload(payload: LicensePayload): string {
     expires_at: payload.expires_at,
     monthly_leads_limit: payload.monthly_leads_limit,
   };
+  if (payload.issued_at !== undefined) {
+    base.issued_at = payload.issued_at;
+  }
+  if (payload.usage_limit_months !== undefined) {
+    base.usage_limit_months = payload.usage_limit_months;
+  }
+  if (payload.usage_expires_at !== undefined) {
+    base.usage_expires_at = payload.usage_expires_at;
+  }
   if (payload.ext !== undefined) {
     return JSON.stringify({
-      v: base.v,
-      salt: base.salt,
-      customer_name: base.customer_name,
-      modules: base.modules,
-      period: base.period,
-      expires_at: base.expires_at,
-      monthly_leads_limit: base.monthly_leads_limit,
+      ...base,
       ext: JSON.parse(stableStringify(payload.ext)),
     });
   }
@@ -120,6 +131,7 @@ export function signLicensePayload(
   period: string,
   expiresAt: string,
   monthlyLeadsLimit: number,
+  usageLimitMonths: number = UNLIMITED_USAGE_LIMIT_MONTHS,
   ext?: Record<string, unknown>
 ): string {
   if (!isLicensePeriod(period)) {
@@ -137,6 +149,17 @@ export function signLicensePayload(
     throw new Error("每月获客数量上限须为正整数，或 -1 表示不限制");
   }
 
+  if (
+    !Number.isInteger(usageLimitMonths) ||
+    (usageLimitMonths !== UNLIMITED_USAGE_LIMIT_MONTHS && usageLimitMonths < 1)
+  ) {
+    throw new Error("授权码验证时限须为正整数月，或 -1 表示不限制");
+  }
+
+  const issuedAt = new Date();
+  const issuedAtIso = issuedAt.toISOString();
+  const usageExpiresAt = computeUsageExpiresAtIso(issuedAt, usageLimitMonths);
+
   const { privateKeyPem, salt } = getLicenseConfig();
   const normalizedExt = normalizeExt(ext);
   const payload: LicensePayload = {
@@ -147,6 +170,9 @@ export function signLicensePayload(
     period,
     expires_at: expiresAt,
     monthly_leads_limit: monthlyLeadsLimit,
+    issued_at: issuedAtIso,
+    usage_limit_months: usageLimitMonths,
+    ...(usageExpiresAt ? { usage_expires_at: usageExpiresAt } : {}),
     ...(normalizedExt !== undefined ? { ext: normalizedExt } : {}),
   };
 
@@ -186,6 +212,21 @@ function assertPayloadShape(payload: unknown): LicensePayload {
   if (typeof p.expires_at !== "string") throw new Error("Invalid expires_at");
   if (typeof p.monthly_leads_limit !== "number") {
     throw new Error("Invalid monthly_leads_limit");
+  }
+  if (p.issued_at !== undefined && typeof p.issued_at !== "string") {
+    throw new Error("Invalid issued_at");
+  }
+  if (
+    p.usage_limit_months !== undefined &&
+    typeof p.usage_limit_months !== "number"
+  ) {
+    throw new Error("Invalid usage_limit_months");
+  }
+  if (
+    p.usage_expires_at !== undefined &&
+    typeof p.usage_expires_at !== "string"
+  ) {
+    throw new Error("Invalid usage_expires_at");
   }
   if (
     p.ext !== undefined &&
@@ -241,6 +282,15 @@ export function tryDecodeLicensePayload(code: string): LicensePayload | null {
   } catch {
     return null;
   }
+}
+
+export function evaluateLicenseTiming(payload: LicensePayload, now = Date.now()) {
+  const expired = new Date(payload.expires_at).getTime() < now;
+  const usageTimedOut = Boolean(
+    payload.usage_expires_at &&
+      new Date(payload.usage_expires_at).getTime() < now
+  );
+  return { expired, usageTimedOut };
 }
 
 export function maskLicenseCode(code: string): string {

@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { adminAuth } from "@/auth/admin-auth";
-import { verifyLicenseCodeWithConfig } from "@/lib/license/crypto";
+import {
+  evaluateLicenseTiming,
+  verifyLicenseCodeWithConfig,
+} from "@/lib/license/crypto";
 
 const schema = z.object({
   code: z.string().min(10),
@@ -21,8 +24,13 @@ export async function POST(req: Request) {
     }
 
     const payload = verifyLicenseCodeWithConfig(parsed.data.code.trim());
-    const expired = new Date(payload.expires_at).getTime() < Date.now();
-    return NextResponse.json({ ok: true, expired, payload });
+    const { expired, usageTimedOut } = evaluateLicenseTiming(payload);
+    return NextResponse.json({
+      ok: true,
+      expired,
+      usageTimedOut,
+      payload,
+    });
   } catch (error) {
     return NextResponse.json(
       {

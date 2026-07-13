@@ -5,23 +5,14 @@ import { adminAuth } from "@/auth/admin-auth";
 import { db } from "@/db";
 import { orderShipments, orders } from "@/db/schema";
 import { createId } from "@/lib/ids";
-import {
-  assertExpiryAtLeastTomorrow,
-  computeExpiryDate,
-  dateInputToIso,
-  isLicensePeriod,
-  parseMonthlyLeadsLimitInput,
-} from "@/lib/license/duration";
-import {
-  signLicensePayload,
-  verifyLicenseCodeWithConfig,
-} from "@/lib/license/crypto";
+import { issueLicenseCode } from "@/server/admin/issue-license";
 import { appendOrderLog, getAdminOrderByNumber } from "@/server/admin/orders";
 
 const schema = z.object({
   modules: z.array(z.string()).min(1),
   period: z.string(),
   monthlyLeadsLimit: z.union([z.number(), z.null(), z.string()]).optional(),
+  usageLimitMonths: z.union([z.number(), z.null(), z.string()]).optional(),
   expiresAt: z.string().optional(),
 });
 
@@ -46,38 +37,27 @@ export async function POST(
     if (!parsed.success) {
       return NextResponse.json({ error: "参数无效" }, { status: 400 });
     }
-    if (!isLicensePeriod(parsed.data.period)) {
-      return NextResponse.json({ error: "无效授权时长" }, { status: 400 });
-    }
-
-    const period = parsed.data.period;
-    const dateOnly = computeExpiryDate(period, parsed.data.expiresAt);
-    assertExpiryAtLeastTomorrow(dateOnly);
-    const expiresAtIso = dateInputToIso(dateOnly);
-    const monthlyLeadsLimit = parseMonthlyLeadsLimitInput(
-      parsed.data.monthlyLeadsLimit
-    );
 
     const customerName =
       detail.order.companyName.trim() || detail.order.contactName.trim();
 
-    const code = signLicensePayload(
+    const issued = issueLicenseCode({
       customerName,
-      parsed.data.modules,
-      period,
-      expiresAtIso,
-      monthlyLeadsLimit
-    );
-    verifyLicenseCodeWithConfig(code);
+      modules: parsed.data.modules,
+      period: parsed.data.period,
+      monthlyLeadsLimit: parsed.data.monthlyLeadsLimit,
+      usageLimitMonths: parsed.data.usageLimitMonths,
+      expiresAt: parsed.data.expiresAt,
+    });
 
     const now = new Date();
     const shipmentId = createId("shp");
     await db.insert(orderShipments).values({
       id: shipmentId,
       orderId: detail.order.id,
-      trackingNumber: code,
+      trackingNumber: issued.code,
       shippedAt: now,
-      note: `modules=${parsed.data.modules.join(",")}; period=${period}`,
+      note: `modules=${issued.modules.join(",")}; period=${issued.period}`,
       adminId: session.user.id,
       createdAt: now,
     });
@@ -105,9 +85,9 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      code,
+      code: issued.code,
       shipmentId,
-      expiresAt: expiresAtIso,
+      expiresAt: issued.expiresAtIso,
     });
   } catch (error) {
     console.error("Generate license error:", error);

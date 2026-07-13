@@ -7,9 +7,14 @@ import {
   upsertLicensePrices,
 } from "@/server/site/license-prices";
 import {
+  getLicenseUsageLimitMonths,
   getRadarMonthlyLeadsLimit,
   updateSiteSettings,
 } from "@/server/site/settings";
+import {
+  DEFAULT_LICENSE_USAGE_LIMIT_MONTHS,
+  UNLIMITED_USAGE_LIMIT_MONTHS,
+} from "@/lib/license/duration";
 import {
   DEFAULT_MONTHLY_LEADS_LIMIT,
   LICENSE_PERIODS,
@@ -25,7 +30,8 @@ import {
 
 function serializeState(
   state: Awaited<ReturnType<typeof getLicensePriceState>>,
-  radarMonthlyLeadsLimit: number
+  radarMonthlyLeadsLimit: number,
+  licenseUsageLimitMonths: number
 ) {
   const { matrix, autoFromMonthly } = state;
   return {
@@ -48,6 +54,7 @@ function serializeState(
     matrix,
     autoFromMonthly,
     radarMonthlyLeadsLimit,
+    licenseUsageLimitMonths,
   };
 }
 
@@ -57,16 +64,24 @@ export async function GET() {
     return NextResponse.json({ error: "未登录" }, { status: 401 });
   }
 
-  const [state, radarMonthlyLeadsLimit] = await Promise.all([
-    getLicensePriceState(),
-    getRadarMonthlyLeadsLimit(),
-  ]);
-  return NextResponse.json(serializeState(state, radarMonthlyLeadsLimit));
+  const [state, radarMonthlyLeadsLimit, licenseUsageLimitMonths] =
+    await Promise.all([
+      getLicensePriceState(),
+      getRadarMonthlyLeadsLimit(),
+      getLicenseUsageLimitMonths(),
+    ]);
+  return NextResponse.json(
+    serializeState(state, radarMonthlyLeadsLimit, licenseUsageLimitMonths)
+  );
 }
 
 const putSchema = z.object({
   resetToDefault: z.boolean().optional(),
   radarMonthlyLeadsLimit: z.number().int().positive().optional(),
+  /** null = 不限制；正整数 = 月数 */
+  licenseUsageLimitMonths: z
+    .union([z.number().int().positive(), z.literal(-1), z.null()])
+    .optional(),
   items: z
     .array(
       z.object({
@@ -96,10 +111,15 @@ export async function PUT(req: Request) {
       const state = await resetLicensePricesToDefault();
       await updateSiteSettings({
         radarMonthlyLeadsLimit: DEFAULT_MONTHLY_LEADS_LIMIT,
+        licenseUsageLimitMonths: DEFAULT_LICENSE_USAGE_LIMIT_MONTHS,
       });
       return NextResponse.json({
         success: true,
-        ...serializeState(state, DEFAULT_MONTHLY_LEADS_LIMIT),
+        ...serializeState(
+          state,
+          DEFAULT_MONTHLY_LEADS_LIMIT,
+          DEFAULT_LICENSE_USAGE_LIMIT_MONTHS
+        ),
       });
     }
 
@@ -116,7 +136,12 @@ export async function PUT(req: Request) {
           item.period === "month" ? false : Boolean(item.autoFromMonthly),
       }));
 
-    if (updates.length === 0 && parsed.data.radarMonthlyLeadsLimit == null) {
+    const hasUsageUpdate = parsed.data.licenseUsageLimitMonths !== undefined;
+    if (
+      updates.length === 0 &&
+      parsed.data.radarMonthlyLeadsLimit == null &&
+      !hasUsageUpdate
+    ) {
       return NextResponse.json({ error: "没有有效价格项" }, { status: 400 });
     }
 
@@ -126,16 +151,34 @@ export async function PUT(req: Request) {
         : await getLicensePriceState();
 
     let radarMonthlyLeadsLimit = await getRadarMonthlyLeadsLimit();
+    let licenseUsageLimitMonths = await getLicenseUsageLimitMonths();
+
+    const settingsPatch: {
+      radarMonthlyLeadsLimit?: number;
+      licenseUsageLimitMonths?: number;
+    } = {};
     if (parsed.data.radarMonthlyLeadsLimit != null) {
-      const settings = await updateSiteSettings({
-        radarMonthlyLeadsLimit: parsed.data.radarMonthlyLeadsLimit,
-      });
+      settingsPatch.radarMonthlyLeadsLimit = parsed.data.radarMonthlyLeadsLimit;
+    }
+    if (hasUsageUpdate) {
+      settingsPatch.licenseUsageLimitMonths =
+        parsed.data.licenseUsageLimitMonths == null
+          ? UNLIMITED_USAGE_LIMIT_MONTHS
+          : parsed.data.licenseUsageLimitMonths;
+    }
+    if (Object.keys(settingsPatch).length > 0) {
+      const settings = await updateSiteSettings(settingsPatch);
       radarMonthlyLeadsLimit = settings.radarMonthlyLeadsLimit;
+      licenseUsageLimitMonths = settings.licenseUsageLimitMonths;
     }
 
     return NextResponse.json({
       success: true,
-      ...serializeState(state, radarMonthlyLeadsLimit),
+      ...serializeState(
+        state,
+        radarMonthlyLeadsLimit,
+        licenseUsageLimitMonths
+      ),
     });
   } catch (error) {
     console.error("Update license prices error:", error);
