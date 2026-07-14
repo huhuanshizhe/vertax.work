@@ -307,7 +307,17 @@ export function MarketingFooter() {
         </div>
 
         <div className="flex flex-col gap-3 text-xs sm:flex-row sm:items-center sm:justify-between" style={{ color: colors.text.muted }}>
-          <p>&copy; {new Date().getFullYear()} VERTAX LIMITED</p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+            <p>&copy; {new Date().getFullYear()} VERTAX LIMITED</p>
+            <a
+              href="https://beian.miit.gov.cn/"
+              rel="noopener noreferrer"
+              target="_blank"
+              style={{ color: colors.text.muted }}
+            >
+              沪ICP备2025146016号-1
+            </a>
+          </div>
           <div className="flex items-center gap-4">
             <Link href="/about/what-is-vertax">关于 VertaX</Link>
             <Link href="/privacy">Privacy</Link>

@@ -279,6 +279,14 @@ export default function ModulesPage() {
               <span className="text-sm font-medium">VertaX</span>
             </Link>
             <span className="text-xs text-gray-600 ml-2">© {new Date().getFullYear()} VERTAX LIMITED</span>
+            <a
+              className="text-xs text-gray-600 hover:text-gray-400 ml-2"
+              href="https://beian.miit.gov.cn/"
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              沪ICP备2025146016号-1
+            </a>
           </div>
           <div className="flex items-center gap-6 text-xs text-gray-500">
             <span>contact@vertax.top</span>
