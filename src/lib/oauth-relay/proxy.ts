@@ -5,7 +5,7 @@ export type ProxyResult = {
 
 export async function proxyFormPost(
   targetUrl: string,
-  body: string | Buffer,
+  body: string,
   headers: Record<string, string> = {},
 ): Promise<ProxyResult> {
   const res = await fetch(targetUrl, {
