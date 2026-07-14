@@ -4,6 +4,7 @@ import { z } from "zod";
 import { adminAuth } from "@/auth/admin-auth";
 import { db } from "@/db";
 import { customerLicenses } from "@/db/schema";
+import { ADMIN_DEBUG_MODE_HEADER } from "@/lib/admin-debug-mode";
 
 const patchSchema = z.object({
   enabled: z.boolean(),
@@ -48,12 +49,19 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _req: Request,
+  req: Request,
   context: { params: Promise<{ id: string }> }
 ) {
   const session = await adminAuth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "未登录" }, { status: 401 });
+  }
+
+  if (req.headers.get(ADMIN_DEBUG_MODE_HEADER) !== "1") {
+    return NextResponse.json(
+      { error: "请先开启调试模式" },
+      { status: 403 }
+    );
   }
 
   const { id } = await context.params;

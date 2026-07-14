@@ -27,6 +27,8 @@ import {
   requestLicenseVerify,
   type LicenseVerifyPayload,
 } from "@/components/admin/license-verify-modal";
+import { useAdminDebugMode } from "@/components/providers/admin-debug-mode-provider";
+import { adminDebugModeHeaders } from "@/lib/admin-debug-mode";
 import { MODULE_LABELS, PERIOD_LABELS } from "@/lib/pricing";
 
 type CustomerRow = {
@@ -72,6 +74,7 @@ function maskCode(code: string) {
 
 export function CustomerLicensesClient() {
   const { message } = App.useApp();
+  const { debugMode } = useAdminDebugMode();
   const [loading, setLoading] = useState(true);
   const [customers, setCustomers] = useState<CustomerRow[]>([]);
   const [q, setQ] = useState("");
@@ -271,6 +274,7 @@ export function CustomerLicensesClient() {
     try {
       const res = await fetch(`/api/admin/customer-licenses/${id}`, {
         method: "DELETE",
+        headers: adminDebugModeHeaders(),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "删除失败");
@@ -507,15 +511,17 @@ export function CustomerLicensesClient() {
                     >
                       验签
                     </Button>
-                    <Popconfirm
-                      title="删除这条授权记录？"
-                      description="仅删除后台记录，已发出的码不会因此作废。"
-                      onConfirm={() => void deleteLicense(row.id)}
-                    >
-                      <Button type="link" size="small" danger>
-                        删除
-                      </Button>
-                    </Popconfirm>
+                    {debugMode ? (
+                      <Popconfirm
+                        title="删除这条授权记录？"
+                        description="仅删除后台记录，已发出的码不会因此作废。"
+                        onConfirm={() => void deleteLicense(row.id)}
+                      >
+                        <Button type="link" size="small" danger>
+                          删除
+                        </Button>
+                      </Popconfirm>
+                    ) : null}
                   </Space>
                 ),
               },

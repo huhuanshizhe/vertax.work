@@ -25,7 +25,6 @@ pnpm db:seed
 ## 默认管理员（seed）
 
 - 邮箱：`admin@vertax.local`
-- 密码：`Admin123456`
 - 入口：`/admin/login`
 
 ## 授权码环境变量

@@ -9,11 +9,13 @@ import {
   SettingOutlined,
   TeamOutlined,
 } from "@ant-design/icons";
-import { App, Button, Dropdown, Layout, Menu, Space, Typography } from "antd";
+import { App, Button, Layout, Menu, Space, Typography } from "antd";
 import type { MenuProps } from "antd";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import type { PropsWithChildren } from "react";
+import { AdminProfileMenu } from "@/components/admin/admin-profile-menu";
+import { AdminDebugModeProvider } from "@/components/providers/admin-debug-mode-provider";
 import {
   adminNavItems,
   getAdminNavOpenKeys,
@@ -52,17 +54,8 @@ function AdminShellInner({
   siteUrl,
 }: PropsWithChildren<{ siteUrl: string }>) {
   const pathname = usePathname();
-  const router = useRouter();
-  const { message } = App.useApp();
   const pageTitle = getAdminPageTitle(pathname);
   const selected = getAdminNavSelectedKey(pathname);
-
-  async function handleLogout() {
-    await fetch("/api/admin/auth/signout", { method: "POST" });
-    message.success("已退出");
-    router.push("/admin/login");
-    router.refresh();
-  }
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
@@ -106,19 +99,7 @@ function AdminShellInner({
             <Button href={siteUrl} type="default" target="_blank" rel="noreferrer">
               查看前台
             </Button>
-            <Dropdown
-              menu={{
-                items: [
-                  {
-                    key: "logout",
-                    label: "退出登录",
-                    onClick: () => void handleLogout(),
-                  },
-                ],
-              }}
-            >
-              <Button type="text">Site Admin</Button>
-            </Dropdown>
+            <AdminProfileMenu />
           </Space>
         </Header>
         <Content style={{ padding: 24, background: "#f6f7f9" }}>
@@ -135,7 +116,9 @@ export function AdminShell({
 }: PropsWithChildren<{ siteUrl?: string }>) {
   return (
     <App>
-      <AdminShellInner siteUrl={siteUrl}>{children}</AdminShellInner>
+      <AdminDebugModeProvider>
+        <AdminShellInner siteUrl={siteUrl}>{children}</AdminShellInner>
+      </AdminDebugModeProvider>
     </App>
   );
 }
