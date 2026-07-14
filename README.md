@@ -39,7 +39,7 @@ pnpm db:seed
 
 部署到 Vercel 并绑定 `www.vertax.work` 后，以下路径由本应用提供（无需独立 Node / supervisor）：
 
-- `/facebook` · `/linkedin` · `/tiktok` · `/twitter`（授权页）
+- `/facebook` · `/linkedin` · `/tiktok` · `/twitter` · `/youtube`（授权页）
 - `POST /{platform}/api/token`（服务端换 token）
 
 环境变量：各渠道 `*_CALLBACK_URL`（如 `LINKEDIN_CALLBACK_URL=vertax://linkedin/authorization`）。
@@ -51,4 +51,4 @@ pnpm db:seed
 - `/checkout` `/pay/[orderNumber]` 下单与假支付宝
 - `/account` `/account/orders` 用户中心（开通进度 / 授权码）
 - `/admin` 管理后台（订单 / 询盘 / 客户）
-- `/facebook` `/linkedin` `/tiktok` `/twitter` 社媒 OAuth 中继
+- `/facebook` `/linkedin` `/tiktok` `/twitter` `/youtube` 社媒 OAuth 中继

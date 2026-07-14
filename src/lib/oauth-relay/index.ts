@@ -31,3 +31,9 @@ export {
   TWITTER_BASE,
   TWITTER_SCOPES,
 } from "./twitter";
+export {
+  buildYouTubePageHtml,
+  proxyYouTubeToken,
+  YOUTUBE_BASE,
+  YOUTUBE_SCOPES,
+} from "./youtube";
