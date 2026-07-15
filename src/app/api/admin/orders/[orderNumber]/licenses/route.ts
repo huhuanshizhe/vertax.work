@@ -7,6 +7,10 @@ import { orderShipments, orders } from "@/db/schema";
 import { createId } from "@/lib/ids";
 import { issueLicenseCode } from "@/server/admin/issue-license";
 import { appendOrderLog, getAdminOrderByNumber } from "@/server/admin/orders";
+import {
+  LICENSE_TYPE_ORDER,
+  LICENSE_USAGE_UNUSED,
+} from "@/lib/license/usage";
 
 const schema = z.object({
   modules: z.array(z.string()).min(1),
@@ -38,10 +42,23 @@ export async function POST(
       return NextResponse.json({ error: "参数无效" }, { status: 400 });
     }
 
+    const orderUserId = String(detail.order.userId || "").trim();
+    if (!orderUserId) {
+      return NextResponse.json(
+        { error: "订单缺少所属用户，无法签发授权码" },
+        { status: 400 }
+      );
+    }
+
     const customerName =
       detail.order.companyName.trim() || detail.order.contactName.trim();
 
+    const now = new Date();
+    const shipmentId = createId("shp");
     const issued = issueLicenseCode({
+      userId: orderUserId,
+      licenseType: LICENSE_TYPE_ORDER,
+      licenseId: shipmentId,
       customerName,
       modules: parsed.data.modules,
       period: parsed.data.period,
@@ -50,14 +67,14 @@ export async function POST(
       expiresAt: parsed.data.expiresAt,
     });
 
-    const now = new Date();
-    const shipmentId = createId("shp");
     await db.insert(orderShipments).values({
       id: shipmentId,
       orderId: detail.order.id,
       trackingNumber: issued.code,
       shippedAt: now,
       note: `modules=${issued.modules.join(",")}; period=${issued.period}`,
+      usageStatus: LICENSE_USAGE_UNUSED,
+      usedAt: null,
       adminId: session.user.id,
       createdAt: now,
     });
@@ -88,6 +105,7 @@ export async function POST(
       code: issued.code,
       shipmentId,
       expiresAt: issued.expiresAtIso,
+      usageStatus: LICENSE_USAGE_UNUSED,
     });
   } catch (error) {
     console.error("Generate license error:", error);

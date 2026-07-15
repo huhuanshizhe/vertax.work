@@ -192,6 +192,9 @@ export const orderShipments = pgTable(
     trackingNumber: text("tracking_number").notNull(),
     shippedAt: timestamp("shipped_at", { withTimezone: true }).notNull(),
     note: text("note"),
+    /** unused | used — license redeem status */
+    usageStatus: text("usage_status").notNull().default("unused"),
+    usedAt: timestamp("used_at", { withTimezone: true }),
     adminId: text("admin_id").references(() => admins.id, {
       onDelete: "set null",
     }),
@@ -223,6 +226,9 @@ export const customerLicenses = pgTable(
     /** 使用时限截止；不限制时为 null */
     usageExpiresAt: timestamp("usage_expires_at", { withTimezone: true }),
     enabled: boolean("enabled").notNull().default(true),
+    /** unused | used — license redeem status */
+    usageStatus: text("usage_status").notNull().default("unused"),
+    usedAt: timestamp("used_at", { withTimezone: true }),
     payloadJson: jsonb("payload_json").$type<Record<string, unknown>>(),
     adminId: text("admin_id").references(() => admins.id, {
       onDelete: "set null",

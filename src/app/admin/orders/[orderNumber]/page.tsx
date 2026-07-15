@@ -65,6 +65,8 @@ export default async function AdminOrderDetailPage({
           trackingNumber: s.trackingNumber,
           shippedAt: s.shippedAt.toLocaleString("zh-CN"),
           note: s.note,
+          usageStatus: s.usageStatus || "unused",
+          usedAt: s.usedAt ? s.usedAt.toLocaleString("zh-CN") : null,
         }))}
         logs={detail.logs.map((l) => ({
           id: l.id,

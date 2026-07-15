@@ -13,8 +13,18 @@ import {
   verifyLicenseCodeWithConfig,
   type LicensePayload,
 } from "@/lib/license/crypto";
+import {
+  isLicenseIssueType,
+  type LicenseIssueType,
+} from "@/lib/license/usage";
 
 export type IssueLicenseInput = {
+  /** Bound vertax.work user id (written into payload.ext.user_id). */
+  userId: string;
+  /** customer | order — written into payload.ext.license_type */
+  licenseType: LicenseIssueType;
+  /** DB row id — written into payload.ext.license_id */
+  licenseId: string;
   customerName: string;
   modules: string[];
   period: string;
@@ -38,6 +48,17 @@ export type IssueLicenseResult = {
 export function issueLicenseCode(
   input: IssueLicenseInput
 ): IssueLicenseResult {
+  const userId = String(input.userId || "").trim();
+  if (!userId) {
+    throw new Error("缺少所属用户 ID，无法签发授权码");
+  }
+  const licenseId = String(input.licenseId || "").trim();
+  if (!licenseId) {
+    throw new Error("缺少授权码 ID，无法签发授权码");
+  }
+  if (!isLicenseIssueType(input.licenseType)) {
+    throw new Error("无效授权码类型");
+  }
   if (!isLicensePeriod(input.period)) {
     throw new Error("无效授权时长");
   }
@@ -60,7 +81,12 @@ export function issueLicenseCode(
     period,
     expiresAtIso,
     monthlyLeadsLimit,
-    usageLimitMonths
+    usageLimitMonths,
+    {
+      user_id: userId,
+      license_type: input.licenseType,
+      license_id: licenseId,
+    }
   );
   const payload = verifyLicenseCodeWithConfig(code);
 

@@ -33,6 +33,7 @@ import {
 } from "@/components/admin/license-verify-modal";
 import { MODULE_LABELS, PERIOD_LABELS } from "@/lib/pricing";
 import type { LicensePeriod } from "@/lib/license/duration";
+import { licenseUsageStatusLabel } from "@/lib/license/usage";
 
 type DetailProps = {
   orderNumber: string;
@@ -69,6 +70,8 @@ type DetailProps = {
     trackingNumber: string;
     shippedAt: string;
     note: string | null;
+    usageStatus: string;
+    usedAt: string | null;
   }[];
   logs: { id: string; actionType: string; detail: string | null; createdAt: string }[];
 };
@@ -475,6 +478,16 @@ export function OrderDetailClient(props: DetailProps) {
                 <div style={{ color: "#94a3b8", fontSize: 12, marginTop: 6 }}>
                   签发时间：{s.shippedAt}
                   {s.note ? ` · ${s.note}` : ""}
+                </div>
+                <div style={{ marginTop: 8 }}>
+                  <Tag color={s.usageStatus === "used" ? "default" : "green"}>
+                    使用状态：{licenseUsageStatusLabel(s.usageStatus)}
+                  </Tag>
+                  {s.usedAt ? (
+                    <Typography.Text type="secondary" style={{ fontSize: 12, marginLeft: 8 }}>
+                      {s.usedAt}
+                    </Typography.Text>
+                  ) : null}
                 </div>
                 <Space style={{ marginTop: 8 }}>
                   <Button

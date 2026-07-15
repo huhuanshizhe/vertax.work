@@ -9,6 +9,10 @@ import {
   customerDisplayName,
   issueLicenseCode,
 } from "@/server/admin/issue-license";
+import {
+  LICENSE_TYPE_CUSTOMER,
+  LICENSE_USAGE_UNUSED,
+} from "@/lib/license/usage";
 
 export async function GET(req: Request) {
   const session = await adminAuth();
@@ -40,6 +44,8 @@ export async function GET(req: Request) {
         ? row.usageExpiresAt.toISOString()
         : null,
       enabled: row.enabled,
+      usageStatus: row.usageStatus,
+      usedAt: row.usedAt ? row.usedAt.toISOString() : null,
       issuedAt: row.issuedAt.toISOString(),
       createdAt: row.createdAt.toISOString(),
     })),
@@ -82,7 +88,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "客户名称为空" }, { status: 400 });
     }
 
+    const now = new Date();
+    const id = createId("clic");
     const issued = issueLicenseCode({
+      userId: user.id,
+      licenseType: LICENSE_TYPE_CUSTOMER,
+      licenseId: id,
       customerName,
       modules: parsed.data.modules,
       period: parsed.data.period,
@@ -91,8 +102,6 @@ export async function POST(req: Request) {
       expiresAt: parsed.data.expiresAt,
     });
 
-    const now = new Date();
-    const id = createId("clic");
     await db.insert(customerLicenses).values({
       id,
       userId: user.id,
@@ -106,6 +115,8 @@ export async function POST(req: Request) {
         ? new Date(issued.usageExpiresAtIso)
         : null,
       enabled: true,
+      usageStatus: LICENSE_USAGE_UNUSED,
+      usedAt: null,
       payloadJson: issued.payload as unknown as Record<string, unknown>,
       adminId: session.user.id,
       issuedAt: now,
@@ -119,6 +130,7 @@ export async function POST(req: Request) {
       expiresAt: issued.expiresAtIso,
       usageLimitMonths: issued.usageLimitMonths,
       usageExpiresAt: issued.usageExpiresAtIso,
+      usageStatus: LICENSE_USAGE_UNUSED,
     });
   } catch (error) {
     console.error("Create customer license error:", error);

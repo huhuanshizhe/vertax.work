@@ -29,6 +29,7 @@ import {
 } from "@/components/admin/license-verify-modal";
 import { useAdminDebugMode } from "@/components/providers/admin-debug-mode-provider";
 import { adminDebugModeHeaders } from "@/lib/admin-debug-mode";
+import { licenseUsageStatusLabel } from "@/lib/license/usage";
 import { MODULE_LABELS, PERIOD_LABELS } from "@/lib/pricing";
 
 type CustomerRow = {
@@ -53,6 +54,8 @@ type LicenseRow = {
   usageLimitMonths: number;
   usageExpiresAt: string | null;
   enabled: boolean;
+  usageStatus: string;
+  usedAt: string | null;
   issuedAt: string;
   createdAt: string;
 };
@@ -415,8 +418,8 @@ export function CustomerLicensesClient() {
             pagination={false}
             scroll={
               licenses.length > 8
-                ? { x: 980, y: 360 }
-                : { x: 980 }
+                ? { x: 1060, y: 360 }
+                : { x: 1060 }
             }
             columns={[
               {
@@ -476,6 +479,19 @@ export function CustomerLicensesClient() {
                 width: 110,
                 render: (iso: string) =>
                   new Date(iso).toLocaleDateString("zh-CN"),
+              },
+              {
+                title: "使用状态",
+                dataIndex: "usageStatus",
+                width: 88,
+                render: (status: string) => {
+                  const used = status === "used";
+                  return (
+                    <Tag color={used ? "default" : "green"}>
+                      {licenseUsageStatusLabel(status)}
+                    </Tag>
+                  );
+                },
               },
               {
                 title: "启用",
