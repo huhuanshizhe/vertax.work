@@ -4,8 +4,13 @@ export {
   getTwitterCallbackUrl,
   getFacebookCallbackUrl,
   getYouTubeCallbackUrl,
+  getDesktopLoginCallbackUrl,
 } from "./env";
 export { htmlResponse, jsonResponse } from "./proxy";
+export {
+  buildDesktopLoginPageHtml,
+  type DesktopLoginProfile,
+} from "./desktop-login";
 export {
   buildFacebookPageHtml,
   proxyFacebookToken,

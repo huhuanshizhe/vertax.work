@@ -14,11 +14,10 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
 
   const nextPath = useMemo(() => {
-    if (typeof window === "undefined") return "/account/orders";
+    if (typeof window === "undefined") return "/";
     const params = new URLSearchParams(window.location.search);
     const next = params.get("next");
-    if (!next || !next.startsWith("/")) return "/account/orders";
-    if (next === "/account") return "/account/orders";
+    if (!next || !next.startsWith("/")) return "/";
     return next;
   }, []);
 

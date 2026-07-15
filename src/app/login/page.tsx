@@ -14,12 +14,10 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   const nextPath = useMemo(() => {
-    if (typeof window === "undefined") return "/account/orders";
+    if (typeof window === "undefined") return "/";
     const params = new URLSearchParams(window.location.search);
     const next = params.get("next");
-    // 默认进入订单页；旧链接里的 /account（资料页）也统一落到订单
-    if (!next || !next.startsWith("/")) return "/account/orders";
-    if (next === "/account") return "/account/orders";
+    if (!next || !next.startsWith("/")) return "/";
     return next;
   }, []);
 

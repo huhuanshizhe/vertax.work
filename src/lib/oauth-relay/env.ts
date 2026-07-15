@@ -36,3 +36,7 @@ export function getYouTubeCallbackUrl(): string {
     "vertax://youtube/authorization",
   );
 }
+
+export function getDesktopLoginCallbackUrl(): string {
+  return readCallback("DESKTOP_LOGIN_CALLBACK_URL", "vertax://account/login");
+}
