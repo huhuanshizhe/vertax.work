@@ -20,12 +20,12 @@ export async function GET() {
     if (row) {
       profile = {
         userId: row.id,
-        name: row.name || session.user?.name || "",
-        email: row.email || session.user?.email || "",
+        name: row.name || session?.user?.name || "",
+        email: row.email || session?.user?.email || "",
         phone: row.phone || "",
         company: row.company || "",
       };
-    } else if (session.user) {
+    } else if (session?.user) {
       profile = {
         userId,
         name: session.user.name || "",
